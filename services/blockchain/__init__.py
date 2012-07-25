@@ -1,14 +1,14 @@
 from twisted.internet import defer
 
-from services import GenericService
-import helpers
-import settings
+from stratum.services import GenericService
+import stratum.helpers as helpers
+import stratum.settings as settings
 
 import p2pnode
 p2pnode.run(settings.BITCOIN_TRUSTED_HOST)
 
-import logger
-log = logger.get_logger('service.blockchain')
+import stratum.logger
+log = stratum.logger.get_logger('service.blockchain')
 
 class BlockchainBlockService(GenericService):
     service_type = 'blockchain.block'

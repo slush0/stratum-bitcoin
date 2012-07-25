@@ -4,13 +4,13 @@ from twisted.names import client
 
 import hashlib
 
-import settings 
-from services import GenericService, signature, synchronous
-import custom_exceptions
-import irc
+import stratum.settings as settings 
+from stratum.services import GenericService, signature, synchronous
+import stratum.custom_exceptions as custom_exceptions
+import stratum.irc as irc
 
-import logger
-log = logger.get_logger('service.node')
+import stratum.logger
+log = stratum.logger.get_logger('service.node')
 
 def admin(func):
     def inner(*args, **kwargs):

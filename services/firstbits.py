@@ -1,9 +1,9 @@
 from twisted.internet import defer
 
-from services import GenericService, signature
-from helpers import get_page
+from stratum.services import GenericService, signature
+from stratum.helpers import get_page
 
-import settings
+import stratum.settings as settings
         
 class FirstbitsService(GenericService):
     service_type = 'firstbits'

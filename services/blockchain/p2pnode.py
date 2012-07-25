@@ -3,8 +3,8 @@ from twisted.internet.protocol import ReconnectingClientFactory
 import StringIO
 import binascii
 
-import logger
-log = logger.get_logger('p2pnode')
+import stratum.logger
+log = stratum.logger.get_logger('p2pnode')
 
 try:
     # Provide deserialization for Bitcoin transactions

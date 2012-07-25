@@ -1,4 +1,4 @@
-from services import GenericService
+from stratum.services import GenericService
 
 class WalletService(GenericService):
     service_type = 'wallet'

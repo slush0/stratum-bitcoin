@@ -1,8 +1,8 @@
 from twisted.internet import defer
 import json
 
-from services import GenericService
-from helpers import get_page
+from stratum.services import GenericService
+from stratum.helpers import get_page
         
 class TxradarService(GenericService):
     service_type = 'txradar'
