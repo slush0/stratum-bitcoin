@@ -17,24 +17,27 @@ from twisted.internet import reactor
 
 from halfnode_tools import *
 
-MY_VERSION = 312
+MY_VERSION = 31402
 MY_SUBVERSION = ".4"
 
-Cs = 0
+#Cs = 0
 
 class CAddress(object):
     def __init__(self):
+        self.nTime = 0
         self.nServices = 1
         self.pchReserved = "\x00" * 10 + "\xff" * 2
         self.ip = "0.0.0.0"
         self.port = 0
     def deserialize(self, f):
+        #self.nTime = struct.unpack("<I", f.read(4))[0]
         self.nServices = struct.unpack("<Q", f.read(8))[0]
         self.pchReserved = f.read(12)
         self.ip = socket.inet_ntoa(f.read(4))
         self.port = struct.unpack(">H", f.read(2))[0]
     def serialize(self):
         r = ""
+        #r += struct.pack("<I", self.nTime)
         r += struct.pack("<Q", self.nServices)
         r += self.pchReserved
         r += socket.inet_aton(self.ip)
@@ -223,13 +226,14 @@ class msg_version(object):
     command = "version"
     def __init__(self):
         self.nVersion = MY_VERSION
-        self.nServices = 1
+        self.nServices = 0
         self.nTime = time.time()
         self.addrTo = CAddress()
         self.addrFrom = CAddress()
         self.nNonce = random.getrandbits(64)
         self.strSubVer = MY_SUBVERSION
-        self.nStartingHeight = -1
+        self.nStartingHeight = 0
+        
     def deserialize(self, f):
         self.nVersion = struct.unpack("<i", f.read(4))[0]
         if self.nVersion == 10300:
@@ -238,20 +242,11 @@ class msg_version(object):
         self.nTime = struct.unpack("<q", f.read(8))[0]
         self.addrTo = CAddress()
         self.addrTo.deserialize(f)
-        if self.nVersion >= 106:
-            self.addrFrom = CAddress()
-            self.addrFrom.deserialize(f)
-            self.nNonce = struct.unpack("<Q", f.read(8))[0]
-            self.strSubVer = deser_string(f)
-            if self.nVersion >= 209:
-                self.nStartingHeight = struct.unpack("<i", f.read(4))[0]
-            else:
-                self.nStartingHeight = None
-        else:
-            self.addrFrom = None
-            self.nNonce = None
-            self.strSubVer = None
-            self.nStartingHeight = None
+        self.addrFrom = CAddress()
+        self.addrFrom.deserialize(f)
+        self.nNonce = struct.unpack("<Q", f.read(8))[0]
+        self.strSubVer = deser_string(f)
+        self.nStartingHeight = struct.unpack("<i", f.read(4))[0]
     def serialize(self):
         r = []
         r.append(struct.pack("<i", self.nVersion))
@@ -371,6 +366,17 @@ class msg_ping(object):
     def __repr__(self):
         return "msg_ping()"
 
+class msg_alert(object):
+    command = "alert"
+    def __init__(self):
+        pass
+    def deserialize(self, f):
+        pass
+    def serialize(self):
+        return ""
+    def __repr__(self):
+        return "msg_alert()"
+    
 class BitcoinP2PProtocol(Protocol):
     messagemap = {
         "version": msg_version,
@@ -382,7 +388,8 @@ class BitcoinP2PProtocol(Protocol):
         "tx": msg_tx,
         "block": msg_block,
         "getaddr": msg_getaddr,
-        "ping": msg_ping
+        "ping": msg_ping,
+        "alert": msg_alert,
     }
    
     def connectionMade(self):
@@ -390,17 +397,18 @@ class BitcoinP2PProtocol(Protocol):
         self.dstaddr = peer.host
         self.dstport = peer.port
         self.recvbuf = ""
-        self.ver_send = 0
-        self.ver_recv = 0
         self.last_sent = 0
-
+ 
         t = msg_version()
+        t.nStartingHeight = getattr(self, 'nStartingHeight', 0)
         t.addrTo.ip = self.dstaddr
         t.addrTo.port = self.dstport
+        t.addrTo.nTime = time.time()
         t.addrFrom.ip = "0.0.0.0"
         t.addrFrom.port = 0
+        t.addrFrom.nTime = time.time()
         self.send_message(t)
-
+        
     def dataReceived(self, data):
         self.recvbuf += data
         self.got_data()
@@ -411,30 +419,21 @@ class BitcoinP2PProtocol(Protocol):
                 return
             if self.recvbuf[:4] != "\xf9\xbe\xb4\xd9":
                 raise ValueError("got garbage %s" % repr(self.recvbuf))
-            if self.ver_recv < 209:
-                if len(self.recvbuf) < 4 + 12 + 4:
-                    return
-                command = self.recvbuf[4:4+12].split("\x00", 1)[0]
-                msglen = struct.unpack("<i", self.recvbuf[4+12:4+12+4])[0]
-                checksum = None
-                if len(self.recvbuf) < 4 + 12 + 4 + msglen:
-                    return
-                msg = self.recvbuf[4+12+4:4+12+4+msglen]
-                self.recvbuf = self.recvbuf[4+12+4+msglen:]
-            else:
-                if len(self.recvbuf) < 4 + 12 + 4 + 4:
-                    return
-                command = self.recvbuf[4:4+12].split("\x00", 1)[0]
-                msglen = struct.unpack("<i", self.recvbuf[4+12:4+12+4])[0]
-                checksum = self.recvbuf[4+12+4:4+12+4+4]
-                if len(self.recvbuf) < 4 + 12 + 4 + 4 + msglen:
-                    return
-                msg = self.recvbuf[4+12+4+4:4+12+4+4+msglen]
-                th = SHA256.new(msg).digest()
-                h = SHA256.new(th).digest()
-                if checksum != h[:4]:
-                    raise ValueError("got bad checksum %s" % repr(self.recvbuf))
-                self.recvbuf = self.recvbuf[4+12+4+4+msglen:]
+
+            if len(self.recvbuf) < 4 + 12 + 4 + 4:
+                return
+            command = self.recvbuf[4:4+12].split("\x00", 1)[0]
+            msglen = struct.unpack("<i", self.recvbuf[4+12:4+12+4])[0]
+            checksum = self.recvbuf[4+12+4:4+12+4+4]
+            if len(self.recvbuf) < 4 + 12 + 4 + 4 + msglen:
+                return
+            msg = self.recvbuf[4+12+4+4:4+12+4+4+msglen]
+            th = SHA256.new(msg).digest()
+            h = SHA256.new(th).digest()
+            if checksum != h[:4]:
+                raise ValueError("got bad checksum %s" % repr(self.recvbuf))
+            self.recvbuf = self.recvbuf[4+12+4+4+msglen:]
+
             if command in self.messagemap:
                 f = cStringIO.StringIO(msg)
                 t = self.messagemap[command]()
@@ -443,9 +442,31 @@ class BitcoinP2PProtocol(Protocol):
             else:
                 print "UNKNOWN COMMAND", command, repr(msg)
                 
+    def prepare_message(self, message):       
+        command = message.command
+        data = message.serialize()
+        tmsg = "\xf9\xbe\xb4\xd9"
+        tmsg += command
+        tmsg += "\x00" * (12 - len(command))
+        tmsg += struct.pack("<I", len(data))
+        th = SHA256.new(data).digest()
+        h = SHA256.new(th).digest()
+        tmsg += h[:4]
+        tmsg += data
+        return tmsg
+    
+    def send_serialized_message(self, tmsg):
+        if not self.connected:
+            return
+        
+        self.transport.write(tmsg)
+        self.last_sent = time.time()       
+        
     def send_message(self, message):
         if not self.connected:
             return
+        
+        #print message.command
         
         #print "send %s" % repr(message)
         command = message.command
@@ -454,11 +475,12 @@ class BitcoinP2PProtocol(Protocol):
         tmsg += command
         tmsg += "\x00" * (12 - len(command))
         tmsg += struct.pack("<I", len(data))
-        if self.ver_send >= 209:
-            th = SHA256.new(data).digest()
-            h = SHA256.new(th).digest()
-            tmsg += h[:4]
+        th = SHA256.new(data).digest()
+        h = SHA256.new(th).digest()
+        tmsg += h[:4]
         tmsg += data
+        
+        #print tmsg, len(tmsg)
         self.transport.write(tmsg)
         self.last_sent = time.time()
         
@@ -484,21 +506,15 @@ class BitcoinP2PProtocol(Protocol):
 #            txlock.release()
 
     def do_version(self, message):
-        if message.nVersion >= 209:
-            self.send_message(msg_verack())
-        self.ver_send = min(MY_VERSION, message.nVersion)
-        if message.nVersion < 209:
-            self.ver_recv = self.ver_send
-
-    def do_verack(self, message):
-            self.ver_recv = self.ver_send
+        #print message
+        self.send_message(msg_verack())
 
     def do_inv(self, message):
         want = msg_getdata()
         for i in message.inv:
             if i.type == 1:
                 want.inv.append(i)
-            elif i.type == 2:
+            if i.type == 2:
                 want.inv.append(i)
         if len(want.inv):
             self.send_message(want)
