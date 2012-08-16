@@ -59,9 +59,13 @@ class BlockchainTransactionService(GenericService):
         # FIXME: Blockchain analysis
         return 0.0005
     
+    @defer.inlineCallbacks
     def broadcast(self, transaction):
-        p2pnode.get_connection().broadcast_tx(transaction)
-        return True
+        try:
+            txhash = (yield p2pnode.get_connection().broadcast_tx(transaction))
+        except:
+            raise Exception("Transaction has been rejected by Bitcoin network")
+        defer.returnValue(txhash)
 
     def get(self, hash):
         raise NotImplemented

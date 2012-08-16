@@ -151,6 +151,8 @@ class CTransaction(object):
     def calc_sha256(self):
         if self.sha256 is None:
             self.sha256 = uint256_from_str(SHA256.new(SHA256.new(self.serialize()).digest()).digest())
+        return self.sha256
+    
     def is_valid(self):
         self.calc_sha256()
         for tout in self.vout:
@@ -198,7 +200,8 @@ class CBlock(object):
             r.append(struct.pack("<I", self.nBits))
             r.append(struct.pack("<I", self.nNonce))
             self.sha256 = uint256_from_str(SHA256.new(SHA256.new(''.join(r)).digest()).digest())
-    
+        return self.sha256
+
     def is_valid(self):
         self.calc_sha256()
         target = uint256_from_compact(self.nBits)
