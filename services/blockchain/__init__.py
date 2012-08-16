@@ -22,8 +22,7 @@ class BlockchainBlockService(GenericService):
         return True
 
     def get_blocknum(self):
-        # FIXME: Own implementation
-        return helpers.ask_old_server('b')
+        pass
     
 class BlockchainAddressService(GenericService):
     service_type = 'blockchain.address'
@@ -37,12 +36,10 @@ class BlockchainAddressService(GenericService):
         return True
 
     def get_history(self, address):
-        # FIXME: Own implementation
-        return helpers.ask_old_server('h', address)
+        pass
     
     def get_balance(self, address):
-        # FIXME: Own implementation
-        return helpers.ask_old_server('b', address)
+        pass
     
 class BlockchainTransactionService(GenericService):
     service_type = 'blockchain.transaction'
@@ -68,4 +65,4 @@ class BlockchainTransactionService(GenericService):
         defer.returnValue(txhash)
 
     def get(self, hash):
-        raise NotImplemented
+        pass
