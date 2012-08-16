@@ -1,5 +1,5 @@
 Contains blockchain-related services for Stratum server. If you want try this,
-1) Install Stratum (read README for instructions)
-2) Checkout this repository to your local directory
-3) Copy config_default.py from stratum package to config.py to directory of this project and set proper values inside.
+1) Install Stratum (read http://pypi.python.org/pypi/stratum/ for instructions)
+2) Checkout this repository
+3) Copy config_default.py from stratum package to conf/config.py of this project and set proper values inside.
 4) Run ‘twistd -ny launcher.tac’ in directory of this project.
