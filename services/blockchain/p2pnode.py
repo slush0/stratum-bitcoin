@@ -69,8 +69,9 @@ class AlternateP2PProtocol(halfnode.BitcoinP2PProtocol):
         
         # defer and timer
         (d, t) = self.txhashes[txhash]        
-        t.cancel()
+        del self.txhashes[txhash]
         
+        t.cancel()
         d.callback(txhash)
         
     def _timeout(self, txhash):
