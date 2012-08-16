@@ -2,7 +2,6 @@ from . import blockchain
 from . import firstbits
 from . import wallet
 from . import node
-from . import txradar
 
 '''
 Mapping of new Electrum protocol to old one:
